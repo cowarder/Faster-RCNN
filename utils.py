@@ -13,7 +13,7 @@ def get_config(cfg_file='config.cfg'):
 
     paras = {}
 
-    for line  in lines:
+    for line in lines:
         line = line.strip()
         if len(line) == 0 or line[0] == '#':
             continue
@@ -25,7 +25,7 @@ def get_config(cfg_file='config.cfg'):
 
 def read_image(img_file, dtype=np.float32):
     """
-    Read an image from 'img_file'.
+    Read an image and transform it into ndarray format.
 
     :param img_file: image file
     :return: Image object
@@ -61,6 +61,13 @@ def rescale_image(img, min_size=600, max_size=1000):
 
 
 def rescale_box(bbox, org_hw, hw):
+    """
+    Rescale box as image
+    :param bbox: bounding box (n by 4)
+    :param org_hw: original image H and W
+    :param hw: rescale image H and W
+    :return: rescaled box
+    """
     org_h, org_w = org_hw
     h, w = hw
     y_scale = h / org_h
@@ -73,6 +80,11 @@ def rescale_box(bbox, org_hw, hw):
 
 
 def random_flip_image(img):
+    """
+    random flip image, x-axis or y-axis, or both
+    :param img: ndarray format image
+    :return: image, if x or t axis flipped
+    """
     x_flip = random.randint(1, 10000) % 2
     y_flip = random.randint(1, 10000) % 2
 
@@ -85,6 +97,14 @@ def random_flip_image(img):
 
 
 def flip_box(bbox, size, y_flip=False, x_flip=False):
+    """
+    Flip boxes as image flipped
+    :param bbox: bounding box
+    :param size: image size
+    :param y_flip: if y-axis flipped
+    :param x_flip: if x-axis flipped
+    :return: flipped bounding box
+    """
     H, W = size
 
     if y_flip:
