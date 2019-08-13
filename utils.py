@@ -7,19 +7,22 @@ import random
 
 
 def get_config(cfg_file='config.cfg'):
+    """
+    Get configuration.
+    :param cfg_file: configuretion file
+    :return: configuration dict file
+    """
 
     with open(cfg_file, 'r') as f:
         lines = f.readlines()
 
     paras = {}
-
     for line in lines:
         line = line.strip()
         if len(line) == 0 or line[0] == '#':
             continue
         key, value = line.split('=')
         paras[key.strip()] = value.strip()
-
     return paras
 
 
