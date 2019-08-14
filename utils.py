@@ -123,3 +123,15 @@ def flip_box(bbox, size, y_flip=False, x_flip=False):
         bbox[:, 3] = x_max
 
     return bbox
+
+
+def loc2box(bbox, loc):
+    """
+    Decode bounding boxes from bounding box offsets and scales
+
+    :param bbox: bounding box  (R, 4)
+    :param loc: predicted bounding box offset and scale (R, 4)
+    :return:decoted bounding box (R, 4) (ymin, xmin, ymax, xmax)
+    """
+
+    box_h = bbox[]
