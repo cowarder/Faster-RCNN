@@ -128,10 +128,33 @@ def flip_box(bbox, size, y_flip=False, x_flip=False):
 def loc2box(bbox, loc):
     """
     Decode bounding boxes from bounding box offsets and scales
+    bounding box regression
 
-    :param bbox: bounding box  (R, 4)
-    :param loc: predicted bounding box offset and scale (R, 4)
+    Args:
+    :param bbox: bounding box  (R, 4) (min_y, min_x, max_y, max_y)
+    :param loc: predicted bounding box offset and scale (R, 4) (y, x, h w)
     :return:decoted bounding box (R, 4) (ymin, xmin, ymax, xmax)
     """
 
-    box_h = bbox[]
+    ph = bbox[:, 2] - bbox[:, 0]
+    pw = bbox[:, 3] - bbox[:, 1]
+    px = bbox[:, 0] + pw / 2.0
+    py = bbox[:, 1] + ph / 2.0
+
+    ty = loc[:, 0::4]
+    tx = loc[:, 1::4]
+    th = loc[:, 2::4]
+    tw = loc[:, 3::4]
+
+    center_y = ty * ph[:, np.newaxis] + py[:, np.newaxis]
+    center_x = tx * pw[:, np.newaxis] + px[:, np.newaxis]
+    h = np.exp(th) * ph[:, np.newaxis]
+    w = np.exp(tw) * pw[:, np.newaxis]
+
+    bboxes = np.zeros(loc.shape, dtype=loc.dtype)
+    bboxes[:, 0::4] = center_y - h / 2
+    bboxes[:, 1::4] = center_x - w / 2
+    bboxes[:, 2::4] = center_y + h / 2
+    bboxes[:, 3::4] = center_x + w / 2
+
+    return bboxes
