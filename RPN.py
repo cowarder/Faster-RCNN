@@ -1,7 +1,7 @@
 import numpy as np
 import torch.nn as nn
 import torch
-import six
+from utils import loc2box
 
 
 class ProposalCreator:
@@ -36,7 +36,7 @@ class ProposalCreator:
 
         Args:
         :param loc: predicted offset and scaling to anchors (R,4)
-        :param score: foreground probability
+        :param score: foreground probability  (R, )
         :param anchor: coordinates of anchors(R, 4)
         :param img_size: (H, W) after scaling
         :param scale: scale ratio
@@ -51,7 +51,30 @@ class ProposalCreator:
             proposal_before = self.proposals_test_before
             proposal_after = self.proposals_test_after
 
+        # bounding box regression
+        roi = loc2box(anchor, loc)
 
+        # clip roi
+        # y_min y_max in  range [0, image_h]
+        # x_min x_max in range [0, image_w]
+        roi[:, 0::2] = np.clip(roi[:, 0::2], 0, img_size[0])
+        roi[:, 1::2] = np.clip(roi[:, 1::2], 0, img_size[1])
+
+        # remove roi which w or h less than self.min_size * scale
+        thresh = self.min_size * scale
+        h = roi[:, 2] - roi[:, 0]
+        w = roi[:, 3] - roi[:, 1]
+        keep = np.where((h >= thresh) & (w >= thresh))[0]
+        roi = roi[keep, :]
+        score = score[keep]
+
+        # sort score of proposals and select proposal_before proposals
+        order = score.ravel().argsort()[::-1]
+        if proposal_before > 0:
+            order = order[:proposal_before]
+        roi = roi[order, :]
+
+        TODO: NMS
 
 
 
