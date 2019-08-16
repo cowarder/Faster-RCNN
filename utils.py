@@ -9,6 +9,8 @@ import random
 def get_config(cfg_file='config.cfg'):
     """
     Get configuration.
+
+    Args:
     :param cfg_file: configuretion file
     :return: configuration dict file
     """
@@ -28,8 +30,9 @@ def get_config(cfg_file='config.cfg'):
 
 def read_image(img_file, dtype=np.float32):
     """
-    Read an image and transform it into ndarray format.
+    Read an image and transform it into ndarray format
 
+    Args:
     :param img_file: image file
     :return: Image object
     """
@@ -49,6 +52,8 @@ def noarmalize(img):
 def rescale_image(img, min_size=600, max_size=1000):
     """
     Rescale image, keep w and h in range [min_size, max_size], while keep aspect ratio
+
+    Args:
     :param img: ndarray image
     :param min_size: min size
     :param max_size: max size
@@ -66,6 +71,8 @@ def rescale_image(img, min_size=600, max_size=1000):
 def rescale_box(bbox, org_hw, hw):
     """
     Rescale box as image
+
+    Args:
     :param bbox: bounding box (n by 4)
     :param org_hw: original image H and W
     :param hw: rescale image H and W
@@ -84,7 +91,9 @@ def rescale_box(bbox, org_hw, hw):
 
 def random_flip_image(img):
     """
-    random flip image, x-axis or y-axis, or both
+    Randomly flip image, x-axis or y-axis, or both
+
+    Args:
     :param img: ndarray format image
     :return: image, if x or t axis flipped
     """
@@ -102,6 +111,8 @@ def random_flip_image(img):
 def flip_box(bbox, size, y_flip=False, x_flip=False):
     """
     Flip boxes as image flipped
+
+    Args:
     :param bbox: bounding box
     :param size: image size
     :param y_flip: if y-axis flipped
@@ -158,3 +169,63 @@ def loc2box(bbox, loc):
     bboxes[:, 3::4] = center_x + w / 2
 
     return bboxes
+
+
+def cal_iou(box1, box2):
+    """
+    Calculate iou value between two boxes
+
+    Args:
+    :param box1: array([y_min, x_min, y_max, x_max])
+    :param box2: array([y_min, x_min, y_max, x_max])
+    :return:
+    """
+    y_min = min(box1[0], box2[0])
+    x_min = min(box1[1], box2[1])
+    y_max = max(box1[2], box2[2])
+    x_max = max(box1[3], box2[3])
+
+    w1 = box1[3] - box1[1]
+    h1 = box1[2] - box1[0]
+    w2 = box2[3] - box2[1]
+    h2 = box2[2] - box2[0]
+
+    all_w = x_max - x_min
+    all_h = y_max - y_min
+
+    inter_w = w1 + w2 - all_w
+    inter_h = h1 + h2 - all_h
+
+    if inter_w <= 0 or inter_h <= 0:
+        return 0.0
+
+    inter = inter_w * inter_h
+    union = w1 * h1 + w2 * h2 - inter
+    return 1.0 * inter / union
+
+
+def nms(bbox, thresh):
+    """
+    Non-maximum suppression
+
+    Args:
+    :param bbox: bounding box shape:(R, 4), they are sorted by score by default (ndarray)
+    :param thresh: nms threshold
+    :return: bounding box, dtype=ndarray
+    """
+
+    keep = np.ones(bbox.shape[0])
+
+    for i in range(0, bbox.shape[0]):
+        box = bbox[i]
+        if keep[i] == 0:
+            continue
+        for j in range(i+1, bbox.shape[0]):
+            if keep[j] == 0:
+                continue
+            iou = cal_iou(bbox[i], bbox[j])
+            if iou >= thresh:
+                keep[j] = 0
+    out_boxes=[bbox[index] for index in range(0, len(keep)) if keep[index] == 1]
+    return np.array(out_boxes)
+
