@@ -1,7 +1,7 @@
 import numpy as np
 import torch.nn as nn
 import torch
-from utils import loc2box
+from utils import loc2box, nms
 
 
 class ProposalCreator:
@@ -74,9 +74,10 @@ class ProposalCreator:
             order = order[:proposal_before]
         roi = roi[order, :]
 
-        TODO: NMS
-
-
+        roi = nms(roi, thresh)
+        if proposal_after > 0:
+            roi = roi[:proposal_after]
+        return roi
 
 
 class RPN(nn.Module):
@@ -93,7 +94,12 @@ class RPN(nn.Module):
         super(RPN, self).__init__()
         self.anchors = self.generate_anchor(base_size, ratios, scales)
         self.base_size = base_size
-        nn.Conv2d
+        n_anchor = self.anchors.shape[0]
+        self.conv1 = nn.Conv2d(int_channels, mid_channel, 3, 1, 1)
+        self.score = nn.Conv2d(mid_channel, n_anchor*2, 1, 1, 0)
+        self.loc = nn.Conv2d(mid_channel, n_anchor*4, 1, 1, 0)
+
+
 
     def generate_anchor(self, base_size=16, ratios=[0.5, 1.0, 2.0], scales=[8, 16, 32]):
         """
