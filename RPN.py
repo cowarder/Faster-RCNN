@@ -1,6 +1,7 @@
 import numpy as np
 import torch.nn as nn
 import torch
+from torch.nn import functional as F
 from utils import loc2box, nms
 
 
@@ -83,7 +84,7 @@ class ProposalCreator:
 class RPN(nn.Module):
 
     def __init__(self, int_channels=512, mid_channel=512, ratios=[0.5, 1, 2],
-                 scales=[8, 16, 32], feat_size=16):
+                 scales=[8, 16, 32], feat_size=16, proposal_creator_params={}):
         """
         :param int_channels: RPN network input channel
         :param mid_channel: RPN network intermediate channel
@@ -98,6 +99,7 @@ class RPN(nn.Module):
         self.conv1 = nn.Conv2d(int_channels, mid_channel, 3, 1, 1)
         self.score = nn.Conv2d(mid_channel, n_anchor*2, 1, 1, 0)
         self.loc = nn.Conv2d(mid_channel, n_anchor*4, 1, 1, 0)
+        self.proposal_layer = ProposalCreator(self, **proposal_creator_params)
 
     def forward(self, x, img_size, scale=1.0):
         """
@@ -117,6 +119,33 @@ class RPN(nn.Module):
 
         n, _, hh, ww = x.shape
         anchor = shift_anchor(self.anchors, self.feat_size, hh, ww)
+        n_anchor = anchor.shape[0] // (hh*ww)
+        inter_layer = F.relu(self.conv1(x))
+
+        rpn_loc = self.loc(inter_layer)
+        # rpn_loss: (N, W*H, 4)
+        rpn_loss = rpn_loc.permute(0, 2, 3, 1).contiguous().view(n, -1, 4)
+        rpn_score = self.score(inter_layer)
+        rpn_score = rpn_score.permute(0, 2, 3, 1).contiguous()
+        rpn_softmax_score = F.softmax(rpn_score.view(n, hh, ww, n_anchor, 2), dim=4)
+        rpn_fg_score = rpn_softmax_score[:, :, :, :, 1].contiguous()
+        rpn_fg_score = rpn_fg_score.view(n, -1)
+        rpn_score = rpn_score.view(n, -1, 2)
+
+        rois = list()
+        roi_indices = list()
+        for i in range(n):
+            roi = self.proposal_layer(
+                rpn_loc[i].cpu().data.numpy(),
+                rpn_fg_score[i].cpu().data.numpy(),
+                anchor, img_size,scale
+            )
+            batch_index = i * np.ones((len(roi),), dtype=np.int32)
+            rois.append(roi)
+            roi_indices.append(batch_index)
+        rois = np.concatenate(rois, axis=0)
+        return rpn_loc, rpn_score, rois, roi_indices, anchor
+
 
     def generate_anchor(self, base_size=16, ratios=[0.5, 1.0, 2.0], scales=[8, 16, 32]):
         """
