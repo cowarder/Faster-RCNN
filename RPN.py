@@ -133,6 +133,7 @@ class RPN(nn.Module):
         rpn_score = rpn_score.view(n, -1, 2)
 
         rois = list()
+        # batch indices
         roi_indices = list()
         for i in range(n):
             roi = self.proposal_layer(
@@ -145,7 +146,6 @@ class RPN(nn.Module):
             roi_indices.append(batch_index)
         rois = np.concatenate(rois, axis=0)
         return rpn_loc, rpn_score, rois, roi_indices, anchor
-
 
     def generate_anchor(self, base_size=16, ratios=[0.5, 1.0, 2.0], scales=[8, 16, 32]):
         """
